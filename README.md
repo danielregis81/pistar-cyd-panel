@@ -47,8 +47,7 @@ Pi-Star (MMDVMHost)                         CYD (ESP32)
 
 - Pi-Star 4.x com DMR (testado no **Pi-Star 4.2.6**, Raspberry Pi Zero W, Python 3.9).
 - CYD 2.8" **ESP32-2432S028R** (tela ILI9341, 320x240).
-- Arduino IDE ou `arduino-cli` com o core **esp32 3.x** e as bibliotecas
-  **TFT_eSPI** e **ArduinoJson 7**.
+- Para gravar: um computador com Chrome/Edge (gravação pelo navegador) ou o `esptool`.
 
 ## 1. Instalar no Pi-Star
 
@@ -63,7 +62,7 @@ sudo ./install.sh
 ```
 
 No fim, o instalador mostra o endereço, por exemplo `OK: dados em http://192.168.0.100/cyd/status.json`.
-Anote o IP: ele vai no `config.h` do firmware.
+Anote o IP: você pode precisar dele na configuração da CYD.
 
 Para conferir, abra esse endereço no navegador. Deve aparecer um JSON com `"ok":true`.
 
@@ -76,22 +75,48 @@ O instalador:
 
 Remover: `sudo ./uninstall.sh` (na mesma pasta).
 
-## 2. Gravar a CYD
+## 2. Gravar a CYD (sem compilar)
 
-1. Instale as bibliotecas **TFT_eSPI** e **ArduinoJson** (Gerenciador de Bibliotecas).
-2. Configure a TFT_eSPI para a CYD: copie [`firmware/User_Setup.h`](firmware/User_Setup.h)
-   para a pasta da biblioteca, substituindo o `User_Setup.h` que está lá
+O firmware pronto está em [`bin/pistar-cyd-panel.bin`](bin/pistar-cyd-panel.bin)
+(imagem completa: grave no endereço **0x0**).
+
+**Pelo navegador (Chrome ou Edge no computador):**
+1. Ligue a CYD no USB.
+2. Abra https://espressif.github.io/esptool-js/ e clique em **Connect**, escolhendo a porta da CYD.
+3. Em **Flash Address** deixe `0x0`, escolha o arquivo `pistar-cyd-panel.bin` e clique em **Program**.
+
+**Pelo terminal (esptool):**
+```bash
+pip install esptool
+esptool.py --chip esp32 write_flash 0x0 bin/pistar-cyd-panel.bin
+```
+
+## 3. Configurar pelo celular
+
+1. Ligue a CYD. No primeiro uso ela mostra na tela uma rede WiFi chamada **`PiStar-CYD-XXXX`**.
+2. No celular, conecte nessa rede e abra **http://192.168.4.1** (muitos celulares abrem sozinhos).
+3. Escolha a rede da casa, digite a senha, confira o endereço do Pi-Star e o fuso, e toque em **Salvar**.
+4. A CYD reinicia, conecta e começa a mostrar quem está falando.
+
+**Endereço do Pi-Star:** o padrão `pi-star.local` acha o Pi-Star sozinho na rede (e continua
+achando se o IP mudar). Se o seu Pi-Star tiver outro nome, ou se a sua rede não resolver nomes
+`.local`, digite o IP que o `install.sh` mostrou.
+
+**Para mudar a configuração depois:** segure o botão **BOOT** da CYD por 3 segundos
+(ou ligue a CYD segurando BOOT). A rede `PiStar-CYD-XXXX` aparece de novo.
+
+Se a CYD não conseguir conectar no WiFi em 30 s, ela abre a configuração sozinha.
+A configuração fica gravada na placa e não se perde quando desliga.
+
+## Compilar você mesmo (opcional)
+
+1. Instale o core **esp32 3.x** e as bibliotecas **TFT_eSPI** e **ArduinoJson 7**.
+2. Copie [`firmware/User_Setup.h`](firmware/User_Setup.h) para a pasta da biblioteca TFT_eSPI,
+   substituindo o `User_Setup.h` que está lá
    (Linux/Mac: `~/Arduino/libraries/TFT_eSPI/`, Windows: `Documentos\Arduino\libraries\TFT_eSPI\`).
-3. Na pasta `firmware/pistar-cyd-panel/`, copie `config.example.h` para **`config.h`** e preencha:
-   ```c
-   #define WIFI_SSID   "sua-rede"
-   #define WIFI_PASS   "sua-senha"
-   #define PISTAR_HOST "192.168.0.100"   // IP do Pi-Star
-   #define TZ_POSIX    "<-03>3"          // fuso do relógio
-   ```
-4. Placa **ESP32 Dev Module** e grave. Com `arduino-cli`:
+3. Placa **ESP32 Dev Module**:
    ```bash
-   arduino-cli compile --fqbn esp32:esp32:esp32 firmware/pistar-cyd-panel
+   arduino-cli compile --fqbn esp32:esp32:esp32 --export-binaries firmware/pistar-cyd-panel
    arduino-cli upload  --fqbn esp32:esp32:esp32 -p /dev/ttyUSB0 firmware/pistar-cyd-panel
    ```
 
@@ -101,15 +126,23 @@ Remover: `sudo ./uninstall.sh` (na mesma pasta).
 |---|---|
 | Cores trocadas (verde fica roxo) ou "negativo" | No `User_Setup.h`, troque `TFT_BGR` por `TFT_RGB` ou comente `TFT_INVERSION_ON`. |
 | Tela branca ou preta | Sua CYD pode ser a variante com ST7789 (2 portas USB). Troque `ILI9341_2_DRIVER` por `ST7789_DRIVER`. |
-| "Aguardando Pi-Star..." | Confira o `PISTAR_HOST` e se `http://<ip>/cyd/status.json` abre no navegador. |
+| "Procurando o Pi-Star..." | Confira se `http://<ip-do-pi-star>/cyd/status.json` abre no navegador. Se abrir, segure BOOT 3 s e digite o IP no lugar de `pi-star.local`. |
 | Estação sem nome ou país | O indicativo não está na base do RadioID. O nome do Talker Alias é usado quando existe. |
 | JSON não aparece depois de instalar | `sudo journalctl -u pistar-cyd-panel -n 30` no Pi-Star. A primeira leitura pode levar alguns segundos num Pi Zero. |
 
 ## Limitações
 
+- Feito para **hotspot simplex de um canal só (single slot)**, que monitora **um timeslot**
+  por vez. A tela mostra a última transmissão, seja de qual slot for. Num hotspot **duplex**
+  (TS1 e TS2 ao mesmo tempo) ele funciona, mas mostra só um QSO por vez.
 - Só DMR, por enquanto (D-Star, YSF, P25 e NXDN não aparecem).
 - O painel é só leitura, sem toque.
 - A contagem do dia recomeça quando o Pi-Star reinicia (o log fica em memória).
+
+## Ideias para o futuro
+
+- Painel para **hotspot duplex**: TS1 e TS2 lado a lado, cada um com o seu chamador.
+- Outros modos (YSF, D-Star, NXDN).
 
 ## Para quem mantém o projeto
 

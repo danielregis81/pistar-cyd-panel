@@ -1,7 +1,4 @@
-# configuração local com WiFi e IP (não versionar)
-firmware/pistar-cyd-panel/config.h
-# build
-build/
-*.bin
+# build local (o firmware pronto fica em bin/)
+firmware/pistar-cyd-panel/build/
 __pycache__/
 *.pyc
