@@ -57,7 +57,7 @@ void loadCfg() {
   prefs.begin("pcp", true);
   cfgSsid = prefs.getString("ssid", "");
   cfgPass = prefs.getString("pass", "");
-  cfgHost = prefs.getString("host", "pi-star.local");
+  cfgHost = prefs.getString("host", "");
   cfgTz   = prefs.getString("tz", "<-03>3");
   prefs.end();
 }
@@ -131,8 +131,8 @@ void handleRoot() {
     "<form method=post action=/save>"
     "<label>Rede WiFi da casa</label><input name=ssid list=nets value=\"" + esc(cfgSsid) + "\" required><datalist id=nets>" + opts + "</datalist>"
     "<label>Senha do WiFi</label><input name=pass type=password placeholder='" + String(cfgPass.length() ? "(manter a atual)" : "") + "'>"
-    "<label>Endereco do Pi-Star</label><input name=host value=\"" + esc(cfgHost) + "\" required>"
-    "<small>Deixe <b>pi-star.local</b> para achar sozinho, ou digite o IP (ex.: 192.168.0.100).</small>"
+    "<label>Endereco do Pi-Star</label><input name=host value=\"" + esc(cfgHost) + "\" placeholder='192.168.0.100' required>"
+    "<small>Digite o <b>IP</b> do Pi-Star (recomendado; o install.sh mostra no final) ou o nome, ex.: pi-star.local.</small>"
     "<label>Fuso horario</label><select name=tz>" + tz + "</select>"
     "<button>Salvar e reiniciar</button></form></body></html>";
   server.send(200, "text/html", h);
@@ -343,7 +343,7 @@ void setup() {
   ledcAttach(TFT_BL, 5000, 8); ledcWrite(TFT_BL, BRIGHTNESS);
 #endif
   loadCfg();
-  if (!cfgSsid.length()) portal("Primeiro uso");
+  if (!cfgSsid.length() || !cfgHost.length()) portal("Primeiro uso");
   if (digitalRead(BOOT_PIN) == LOW) portal("Botao BOOT pressionado");
 
   tft.setTextDatum(MC_DATUM); tft.setTextColor(TXT, BG);

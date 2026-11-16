@@ -46,7 +46,7 @@ done
 if [ "$code" = 200 ]; then
     ip=$(hostname -I | awk '{print $1}')
     echo "OK: dados em http://$ip/cyd/status.json"
-    echo "Na configuracao da CYD use pi-star.local ou este IP: $ip"
+    echo "Na configuracao da CYD, digite este IP do Pi-Star: $ip"
 else
     echo "ERRO: /cyd/status.json não respondeu. Veja: journalctl -u pistar-cyd-panel -n 30"
     exit 1

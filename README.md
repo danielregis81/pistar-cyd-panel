@@ -95,12 +95,12 @@ esptool.py --chip esp32 write_flash 0x0 bin/pistar-cyd-panel.bin
 
 1. Ligue a CYD. No primeiro uso ela mostra na tela uma rede WiFi chamada **`PiStar-CYD-XXXX`**.
 2. No celular, conecte nessa rede e abra **http://192.168.4.1** (muitos celulares abrem sozinhos).
-3. Escolha a rede da casa, digite a senha, confira o endereço do Pi-Star e o fuso, e toque em **Salvar**.
+3. Escolha a rede da casa, digite a senha, digite o **IP do Pi-Star** e escolha o fuso. Toque em **Salvar**.
 4. A CYD reinicia, conecta e começa a mostrar quem está falando.
 
-**Endereço do Pi-Star:** o padrão `pi-star.local` acha o Pi-Star sozinho na rede (e continua
-achando se o IP mudar). Se o seu Pi-Star tiver outro nome, ou se a sua rede não resolver nomes
-`.local`, digite o IP que o `install.sh` mostrou.
+**Endereço do Pi-Star:** use o IP que o `install.sh` mostrou no final (por exemplo `192.168.0.100`).
+O nome `pi-star.local` também funciona, mas nem toda rede resolve nomes `.local` de forma confiável.
+Dica: reserve um IP fixo para o Pi-Star no seu roteador, assim ele não muda.
 
 **Para mudar a configuração depois:** segure o botão **BOOT** da CYD por 3 segundos
 (ou ligue a CYD segurando BOOT). A rede `PiStar-CYD-XXXX` aparece de novo.
@@ -126,7 +126,7 @@ A configuração fica gravada na placa e não se perde quando desliga.
 |---|---|
 | Cores trocadas (verde fica roxo) ou "negativo" | No `User_Setup.h`, troque `TFT_BGR` por `TFT_RGB` ou comente `TFT_INVERSION_ON`. |
 | Tela branca ou preta | Sua CYD pode ser a variante com ST7789 (2 portas USB). Troque `ILI9341_2_DRIVER` por `ST7789_DRIVER`. |
-| "Procurando o Pi-Star..." | Confira se `http://<ip-do-pi-star>/cyd/status.json` abre no navegador. Se abrir, segure BOOT 3 s e digite o IP no lugar de `pi-star.local`. |
+| "Procurando o Pi-Star..." | Confira se `http://<ip-do-pi-star>/cyd/status.json` abre no navegador. Se abrir, segure BOOT 3 s e confira o endereço digitado (prefira o IP). |
 | Estação sem nome ou país | O indicativo não está na base do RadioID. O nome do Talker Alias é usado quando existe. |
 | JSON não aparece depois de instalar | `sudo journalctl -u pistar-cyd-panel -n 30` no Pi-Star. A primeira leitura pode levar alguns segundos num Pi Zero. |
 
