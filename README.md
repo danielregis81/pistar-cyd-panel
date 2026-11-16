@@ -24,6 +24,12 @@ mais os últimos ouvidos e a contagem de estações e países do dia.
 └──────────────────────────────────────┘
 ```
 
+## Fotos
+
+![CYD mostrando uma estação do Reino Unido no ar](docs/painel-1.jpg)
+
+![CYD mostrando uma estação da Itália no ar](docs/painel-2.jpg)
+
 ## Como funciona
 
 ```
