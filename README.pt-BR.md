@@ -2,69 +2,64 @@
 
 🇬🇧 [English](README.md) · 🇧🇷 Português
 
-🇬🇧 English · 🇧🇷 [Português](README.pt-BR.md)
+Painel **"quem está falando agora"** do Pi-Star numa tela **CYD 2.8"** (ESP32-2432S028R,
+a "Cheap Yellow Display").
 
-A **"who is talking now"** panel for Pi-Star on a **2.8" CYD** (ESP32-2432S028R,
-the "Cheap Yellow Display").
-
-It shows the station currently transmitting on your DMR hotspot: **country flag, callsign,
-name, country, talkgroup, timeslot, source (local RF or network), QSO timer, BER and loss**,
-plus the last heard stations and the number of stations and countries heard today.
-
-## Photos
-
-![CYD showing a station from the United Kingdom on the air](docs/painel-1.jpg)
-
-![CYD showing a station from Italy on the air](docs/painel-2.jpg)
-
-(The panel text is in Portuguese: "NO AR" = on air, "Ultimos" = last heard,
-"hoje" = today, "estacoes" = stations, "paises" = countries.)
+Mostra a estação que está transmitindo no seu hotspot DMR: **bandeira do país, indicativo,
+nome, país, talkgroup, timeslot, origem (RF local ou rede), cronômetro do QSO, BER e perda**,
+mais os últimos ouvidos e a contagem de estações e países do dia.
 
 ```
 ┌──────────────────────────────────────┐
 │ PY0XXX DMR                     14:32 │
 │ ┌──────────────────────────────────┐ │
-│ │ [flag]      PY2XXX      ( NO AR )│ │
+│ │ [bandeira]  PY2XXX      ( NO AR )│ │
 │ │             Joao                 │ │
 │ │             Brazil               │ │
 │ │ TG 72453            DMR TS2      │ │
 │ │                     Net          │ │
-│ │ 00:47          BER 0.0%  loss 0% │ │
+│ │ 00:47          BER 0.0%  perda 0%│ │
 │ └──────────────────────────────────┘ │
-│ ┌ Last           today: 89 / 31 ───┐ │
+│ ┌ Ultimos        hoje: 89 / 31 ────┐ │
 │ │ ZL1AG 14:30  VE9HI 14:29  ...    │ │
 │ └──────────────────────────────────┘ │
 └──────────────────────────────────────┘
 ```
 
-## How it works
+## Fotos
+
+![CYD mostrando uma estação do Reino Unido no ar](docs/painel-1.jpg)
+
+![CYD mostrando uma estação da Itália no ar](docs/painel-2.jpg)
+
+## Como funciona
 
 ```
 Pi-Star (MMDVMHost)                         CYD (ESP32)
   /var/log/pi-star/MMDVM-*.log                 │
-        │  pistar-cyd-panel.py (service)       │  every 1-2 s
+        │  pistar-cyd-panel.py (serviço)       │  a cada 1-2 s
         ▼                                      │
   /run/pistar-cyd-panel/status.json  ◄─────────┘  GET http://<pi-star>/cyd/status.json
   /usr/local/share/.../flags/<cc>.565 ◄─────────  GET http://<pi-star>/cyd/flags/br.565
 ```
 
-- The **collector** runs on the Pi-Star itself and reads the MMDVMHost log. It does not
-  depend on the dashboard HTML, so it keeps working if the dashboard is updated or customized.
-- **Name and country** come from the RadioID databases that Pi-Star already downloads daily
-  (`/usr/local/etc/nextionUsers.csv`; fallback: `DMRIds.dat` + the MCC prefix of the DMR ID).
-- The JSON lives in **memory** (`/run`), so nothing is written to the SD card.
-- Pi-Star's nginx already serves the files: no new port, no firewall rule.
-- It does not change any dashboard file. It only adds the link `/var/www/dashboard/cyd`.
+- O **coletor** roda no próprio Pi-Star e lê o log do MMDVMHost. Não depende do HTML do
+  dashboard, então continua funcionando se o dashboard for atualizado ou personalizado.
+- **Nome e país** vêm das bases do RadioID que o Pi-Star já baixa todo dia
+  (`/usr/local/etc/nextionUsers.csv`; reserva: `DMRIds.dat` + prefixo MCC do DMR ID).
+- O JSON fica em **memória** (`/run`), então nada é gravado no cartão SD.
+- O nginx do Pi-Star já serve os arquivos: nenhuma porta nova, nenhuma regra de firewall.
+- Ele não muda nenhum arquivo do dashboard. Só adiciona o link `/var/www/dashboard/cyd`.
 
-## Requirements
+## Requisitos
 
-- Pi-Star 4.x with DMR (tested on **Pi-Star 4.2.6**, Raspberry Pi Zero W, Python 3.9).
-- A **2.8" ESP32-2432S028R CYD** (ILI9341 display, 320x240).
-- To flash: a computer with Chrome/Edge (flash from the browser) or `esptool`.
+- Pi-Star 4.x com DMR (testado no **Pi-Star 4.2.6**, Raspberry Pi Zero W, Python 3.9).
+- CYD 2.8" **ESP32-2432S028R** (tela ILI9341, 320x240).
+- Para gravar: um computador com Chrome/Edge (gravação pelo navegador) ou o `esptool`.
 
-## 1. Install on the Pi-Star
+## 1. Instalar no Pi-Star
 
-Log in to the Pi-Star over SSH (user `pi-star`) and run:
+Entre no Pi-Star por SSH (usuário `pi-star`) e rode:
 
 ```bash
 cd /tmp
@@ -74,105 +69,103 @@ cd pistar-cyd-panel-main/pistar
 sudo ./install.sh
 ```
 
-At the end the installer prints the address, for example
-`OK: dados em http://192.168.0.100/cyd/status.json`.
-Write down that IP: you will need it when configuring the CYD.
+No fim, o instalador mostra o endereço, por exemplo `OK: dados em http://192.168.0.100/cyd/status.json`.
+Anote o IP: você pode precisar dele na configuração da CYD.
 
-To check, open that address in a browser. You should see a JSON with `"ok":true`.
+Para conferir, abra esse endereço no navegador. Deve aparecer um JSON com `"ok":true`.
 
-The installer:
-- copies the collector to `/usr/local/lib/pistar-cyd-panel/` and the flags to
+O instalador:
+- copia o coletor para `/usr/local/lib/pistar-cyd-panel/` e as bandeiras para
   `/usr/local/share/pistar-cyd-panel/flags/`;
-- creates the `pistar-cyd-panel` service (starts at boot and restarts itself if it dies);
-- creates the link `/var/www/dashboard/cyd`;
-- puts the filesystem back to read-only at the end, if it was read-only before.
+- cria o serviço `pistar-cyd-panel` (sobe no boot e reinicia sozinho se cair);
+- cria o link `/var/www/dashboard/cyd`;
+- devolve o sistema de arquivos para somente leitura no fim, se ele estava assim.
 
-To remove: `sudo ./uninstall.sh` (in the same folder).
+Remover: `sudo ./uninstall.sh` (na mesma pasta).
 
-## 2. Flash the CYD (no compiling)
+## 2. Gravar a CYD (sem compilar)
 
-The ready-made firmware is [`bin/pistar-cyd-panel.bin`](bin/pistar-cyd-panel.bin)
-(full image: flash it at address **0x0**).
+O firmware pronto está em [`bin/pistar-cyd-panel.bin`](bin/pistar-cyd-panel.bin)
+(imagem completa: grave no endereço **0x0**).
 
-**From the browser (Chrome or Edge on a computer):**
-1. Plug the CYD into USB.
-2. Open https://espressif.github.io/esptool-js/ and click **Connect**, choosing the CYD's port.
-3. Leave **Flash Address** at `0x0`, choose the file `pistar-cyd-panel.bin` and click **Program**.
+**Pelo navegador (Chrome ou Edge no computador):**
+1. Ligue a CYD no USB.
+2. Abra https://espressif.github.io/esptool-js/ e clique em **Connect**, escolhendo a porta da CYD.
+3. Em **Flash Address** deixe `0x0`, escolha o arquivo `pistar-cyd-panel.bin` e clique em **Program**.
 
-**From the terminal (esptool):**
+**Pelo terminal (esptool):**
 ```bash
 pip install esptool
 esptool.py --chip esp32 write_flash 0x0 bin/pistar-cyd-panel.bin
 ```
 
-## 3. Configure from your phone
+## 3. Configurar pelo celular
 
-1. Power on the CYD. On first use it shows a WiFi network called **`PiStar-CYD-XXXX`** on screen.
-2. On your phone, join that network and open **http://192.168.4.1** (many phones open it automatically).
-3. Pick your home network, type the password, type the **Pi-Star IP** and choose your time zone.
-   Tap **Save**.
-4. The CYD restarts, connects and starts showing who is talking.
+1. Ligue a CYD. No primeiro uso ela mostra na tela uma rede WiFi chamada **`PiStar-CYD-XXXX`**.
+2. No celular, conecte nessa rede e abra **http://192.168.4.1** (muitos celulares abrem sozinhos).
+3. Escolha a rede da casa, digite a senha, digite o **IP do Pi-Star** e escolha o fuso. Toque em **Salvar**.
+4. A CYD reinicia, conecta e começa a mostrar quem está falando.
 
-**Pi-Star address:** use the IP that `install.sh` printed at the end (for example `192.168.0.100`).
-The name `pi-star.local` also works, but not every network resolves `.local` names reliably.
-Tip: reserve a fixed IP for the Pi-Star in your router so it does not change.
+**Endereço do Pi-Star:** use o IP que o `install.sh` mostrou no final (por exemplo `192.168.0.100`).
+O nome `pi-star.local` também funciona, mas nem toda rede resolve nomes `.local` de forma confiável.
+Dica: reserve um IP fixo para o Pi-Star no seu roteador, assim ele não muda.
 
-**To change the configuration later:** hold the CYD's **BOOT** button for 3 seconds
-(or power it on while holding BOOT). The `PiStar-CYD-XXXX` network appears again.
+**Para mudar a configuração depois:** segure o botão **BOOT** da CYD por 3 segundos
+(ou ligue a CYD segurando BOOT). A rede `PiStar-CYD-XXXX` aparece de novo.
 
-If the CYD cannot connect to WiFi within 30 s, it opens the configuration by itself.
-The configuration is stored on the board and survives power-off.
+Se a CYD não conseguir conectar no WiFi em 30 s, ela abre a configuração sozinha.
+A configuração fica gravada na placa e não se perde quando desliga.
 
-## Building it yourself (optional)
+## Compilar você mesmo (opcional)
 
-1. Install the **esp32 3.x** core and the **TFT_eSPI** and **ArduinoJson 7** libraries.
-2. Copy [`firmware/User_Setup.h`](firmware/User_Setup.h) into the TFT_eSPI library folder,
-   replacing the `User_Setup.h` that is there
-   (Linux/Mac: `~/Arduino/libraries/TFT_eSPI/`, Windows: `Documents\Arduino\libraries\TFT_eSPI\`).
-3. Board **ESP32 Dev Module**:
+1. Instale o core **esp32 3.x** e as bibliotecas **TFT_eSPI** e **ArduinoJson 7**.
+2. Copie [`firmware/User_Setup.h`](firmware/User_Setup.h) para a pasta da biblioteca TFT_eSPI,
+   substituindo o `User_Setup.h` que está lá
+   (Linux/Mac: `~/Arduino/libraries/TFT_eSPI/`, Windows: `Documentos\Arduino\libraries\TFT_eSPI\`).
+3. Placa **ESP32 Dev Module**:
    ```bash
    arduino-cli compile --fqbn esp32:esp32:esp32 --export-binaries firmware/pistar-cyd-panel
    arduino-cli upload  --fqbn esp32:esp32:esp32 -p /dev/ttyUSB0 firmware/pistar-cyd-panel
    ```
 
-## Troubleshooting
+## Problemas comuns
 
-| Symptom | What to do |
+| Sintoma | O que fazer |
 |---|---|
-| Wrong colors (green looks purple) or "negative" image | In `User_Setup.h`, change `TFT_BGR` to `TFT_RGB` or comment out `TFT_INVERSION_ON`. |
-| White or black screen | Your CYD may be the ST7789 variant (2 USB ports). Replace `ILI9341_2_DRIVER` with `ST7789_DRIVER`. |
-| "Procurando o Pi-Star..." (searching for Pi-Star) | Check that `http://<pi-star-ip>/cyd/status.json` opens in a browser. If it does, hold BOOT for 3 s and check the address you typed (prefer the IP). |
-| Station without name or country | The callsign is not in the RadioID database. The Talker Alias name is used when available. |
-| JSON does not appear after installing | Run `sudo journalctl -u pistar-cyd-panel -n 30` on the Pi-Star. The first read can take a few seconds on a Pi Zero. |
+| Cores trocadas (verde fica roxo) ou "negativo" | No `User_Setup.h`, troque `TFT_BGR` por `TFT_RGB` ou comente `TFT_INVERSION_ON`. |
+| Tela branca ou preta | Sua CYD pode ser a variante com ST7789 (2 portas USB). Troque `ILI9341_2_DRIVER` por `ST7789_DRIVER`. |
+| "Procurando o Pi-Star..." | Confira se `http://<ip-do-pi-star>/cyd/status.json` abre no navegador. Se abrir, segure BOOT 3 s e confira o endereço digitado (prefira o IP). |
+| Estação sem nome ou país | O indicativo não está na base do RadioID. O nome do Talker Alias é usado quando existe. |
+| JSON não aparece depois de instalar | `sudo journalctl -u pistar-cyd-panel -n 30` no Pi-Star. A primeira leitura pode levar alguns segundos num Pi Zero. |
 
-## Limitations
+## Limitações
 
-- Built for a **simplex, single-slot hotspot** that monitors **one timeslot** at a time.
-  The screen shows the last transmission, whichever slot it came from. On a **duplex**
-  hotspot (TS1 and TS2 at the same time) it works, but shows only one QSO at a time.
-- DMR only, for now (D-Star, YSF, P25 and NXDN do not appear).
-- The panel is read-only, with no touch input.
-- The daily count restarts when the Pi-Star reboots (the log is kept in memory).
+- Feito para **hotspot simplex de um canal só (single slot)**, que monitora **um timeslot**
+  por vez. A tela mostra a última transmissão, seja de qual slot for. Num hotspot **duplex**
+  (TS1 e TS2 ao mesmo tempo) ele funciona, mas mostra só um QSO por vez.
+- Só DMR, por enquanto (D-Star, YSF, P25 e NXDN não aparecem).
+- O painel é só leitura, sem toque.
+- A contagem do dia recomeça quando o Pi-Star reinicia (o log fica em memória).
 
-## Ideas for the future
+## Ideias para o futuro
 
-- A panel for **duplex hotspots**: TS1 and TS2 side by side, each with its own caller.
-- Other modes (YSF, D-Star, NXDN).
+- Painel para **hotspot duplex**: TS1 e TS2 lado a lado, cada um com o seu chamador.
+- Outros modos (YSF, D-Star, NXDN).
 
-## For maintainers
+## Para quem mantém o projeto
 
-The flags (`pistar/flags/*.565`) and the country map (`pistar/countries.json`) are generated by:
+As bandeiras (`pistar/flags/*.565`) e o mapa de países (`pistar/countries.json`) são gerados por:
 
 ```bash
 pip install pillow
 python3 tools/make_flags.py
 ```
 
-## Credits and license
+## Créditos e licença
 
-- Code: MIT license (see [LICENSE](LICENSE)).
-- Flags: [flagcdn.com](https://flagcdn.com), public domain images (Wikimedia Commons).
-- MCC → country table: [pbakondy/mcc-mnc-list](https://github.com/pbakondy/mcc-mnc-list) (MIT).
-- Station data: [RadioID.net](https://radioid.net), downloaded by the Pi-Star itself.
+- Código: licença MIT (veja [LICENSE](LICENSE)).
+- Bandeiras: [flagcdn.com](https://flagcdn.com), imagens de domínio público (Wikimedia Commons).
+- Tabela MCC → país: [pbakondy/mcc-mnc-list](https://github.com/pbakondy/mcc-mnc-list) (MIT).
+- Dados de estações: [RadioID.net](https://radioid.net), baixados pelo próprio Pi-Star.
 
 73!
