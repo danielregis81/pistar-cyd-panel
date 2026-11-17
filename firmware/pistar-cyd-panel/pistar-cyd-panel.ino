@@ -269,31 +269,64 @@ void message(const char* m) {
   sig = "";
 }
 
+// Cache para evitar redesenho desnecessário
+String dynTime = "", dynBer = "", dynActive = "";
+
 void drawDynamic() {
   JsonObject c = doc["cur"];
-  tft.fillRect(12, 142, 296, 22, CARD);
   long st = c["start"] | 0L;
-  tft.setTextDatum(ML_DATUM);
+  String newActive = active ? "A" : "-";
+  
+  // Tempo de duração
+  String newTime;
   if (active) {
-    tft.setTextColor(RED, CARD); tft.drawString(mmss((long)time(nullptr) - st), 14, 153, 4);
+    newTime = mmss((long)time(nullptr) - st);
   } else {
-    tft.setTextColor(TXT, CARD); tft.drawString(String((const char*)(c["dur"] | "")) + " s", 14, 153, 2);
-    tft.setTextColor(DIM, CARD); tft.drawString(agoStr(st), 80, 153, 2);
+    newTime = String((const char*)(c["dur"] | "")) + " s " + agoStr(st);
   }
-  tft.setTextDatum(MR_DATUM); tft.setTextColor(DIM, CARD);
-  String q = String("BER ") + (const char*)(c["ber"] | "-");
+  
+  // BER e perda
+  String newBer = String("BER ") + (const char*)(c["ber"] | "-");
   const char* loss = c["loss"] | "";
-  if (strlen(loss)) q += String("  perda ") + loss;
-  tft.drawString(q, 306, 153, 2);
+  if (strlen(loss)) newBer += String("  perda ") + loss;
+  
+  // Só redesenha se algo mudou
+  if (newTime != dynTime || newActive != dynActive) {
+    tft.fillRect(12, 142, 180, 22, CARD);  // só a área do tempo
+    tft.setTextDatum(ML_DATUM);
+    if (active) {
+      tft.setTextColor(RED, CARD); tft.drawString(newTime, 14, 153, 4);
+    } else {
+      tft.setTextColor(TXT, CARD); tft.drawString(String((const char*)(c["dur"] | "")) + " s", 14, 153, 2);
+      tft.setTextColor(DIM, CARD); tft.drawString(agoStr(st), 80, 153, 2);
+    }
+    dynTime = newTime;
+    dynActive = newActive;
+  }
+  
+  if (newBer != dynBer) {
+    tft.fillRect(192, 142, 116, 22, CARD);  // só a área do BER
+    tft.setTextDatum(MR_DATUM); tft.setTextColor(DIM, CARD);
+    tft.drawString(newBer, 306, 153, 2);
+    dynBer = newBer;
+  }
 }
+
+// Cache para contadores (evita redesenho quando só muda contador)
+int lastToday = -1, lastCountries = -1;
 
 void drawPanel() {
   JsonObject c = doc["cur"];
   if (c.isNull()) { message("Nenhuma estacao ouvida ainda"); return; }
-  String s = String((const char*)(c["call"] | "")) + (long)(c["start"] | 0L) + (active ? "A" : "-")
-           + (const char*)(c["dur"] | "") + doc["today"].as<int>();
-  if (s != sig) {
+  
+  // Assinatura só para mudança de estação (call + start + active)
+  // dur e today NÃO entram aqui — só causam atualização parcial
+  String s = String((const char*)(c["call"] | "")) + (long)(c["start"] | 0L) + (active ? "A" : "-");
+  
+  bool fullRedraw = (s != sig);
+  if (fullRedraw) {
     sig = s;
+    dynTime = ""; dynBer = ""; dynActive = "";  // força atualização do dinâmico
     tft.fillRect(0, 27, 320, 213, BG);
     card(6, 32, 308, 136);
     uint16_t* fl = getFlag(c["cc"] | "");
@@ -319,8 +352,20 @@ void drawPanel() {
     tft.drawString(src == "RF" ? "RF (local)" : src, 306, 134, 2);
     card(6, 172, 308, 64);
     tft.setTextDatum(ML_DATUM); tft.setTextColor(DIM, CARD); tft.drawString("Ultimos", 14, 182, 1);
-    char b[48]; snprintf(b, sizeof(b), "hoje: %d estacoes / %d paises", (int)(doc["today"] | 0), (int)(doc["countries"] | 0));
-    tft.setTextDatum(MR_DATUM); tft.drawString(b, 306, 182, 1);
+    lastToday = -1; lastCountries = -1;  // força atualização dos contadores
+  }
+  
+  // Atualiza contadores só se mudaram
+  int curToday = doc["today"] | 0, curCountries = doc["countries"] | 0;
+  if (curToday != lastToday || curCountries != lastCountries || fullRedraw) {
+    tft.fillRect(120, 175, 194, 14, CARD);  // só a área dos contadores
+    char b[48]; snprintf(b, sizeof(b), "hoje: %d estacoes / %d paises", curToday, curCountries);
+    tft.setTextDatum(MR_DATUM); tft.setTextColor(DIM, CARD); tft.drawString(b, 306, 182, 1);
+    lastToday = curToday; lastCountries = curCountries;
+  }
+  
+  // Lista de últimos só redesenha se houve fullRedraw
+  if (fullRedraw) {
     int i = 0;
     for (JsonObject l : doc["last"].as<JsonArray>()) {
       if (i >= 6) break;
