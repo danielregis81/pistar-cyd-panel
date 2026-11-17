@@ -89,20 +89,8 @@ def norm(s):
     return ascii_(s).lower().replace("&", "and").replace(".", "").strip()
 
 
-# Departamentos e coletividades da Franca: o dashboard do Pi-Star mostra "France" para eles
-# (ex.: FR4AW, Reunion), entao o painel faz o mesmo.
-FR_TERRITORIES = {"re", "gp", "mq", "gf", "yt", "pm", "bl", "mf", "pf", "nc", "wf", "tf"}
-
-
 @lru_cache(maxsize=2048)
 def _who(call, m1, m2):
-    dmrid, name, cc, cname = _who_raw(call)
-    if cc in FR_TERRITORIES:
-        cc, cname = "fr", "France"
-    return dmrid, name, cc, cname
-
-
-def _who_raw(call):
     """-> (dmr_id, nome, iso2, país)"""
     line = USERS.line_for(call)
     if line:
