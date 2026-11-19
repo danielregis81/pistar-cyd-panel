@@ -116,6 +116,21 @@ Dica: reserve um IP fixo para o Pi-Star no seu roteador, assim ele não muda.
 Se a CYD não conseguir conectar no WiFi em 30 s, ela abre a configuração sozinha.
 A configuração fica gravada na placa e não se perde quando desliga.
 
+## Acesso remoto (opcional)
+
+Se você quer monitorar o hotspot de fora da rede de casa (por exemplo, quando o hotspot
+está portátil ou na casa de um amigo), pode usar um **túnel** como Cloudflare Tunnel,
+ngrok ou similar.
+
+Basta apontar o túnel para o IP do Pi-Star e usar o **domínio externo** na configuração
+da CYD em vez do IP local. Por exemplo: `pistar.exemplo.com.br`.
+
+O firmware detecta automaticamente quando você usa um nome de domínio (em vez de IP ou
+`.local`) e muda para **HTTPS**. Não precisa configurar mais nada.
+
+**Observação:** conexões HTTPS são mais lentas que HTTP local por causa do handshake TLS.
+O painel pode demorar um pouco mais pra carregar as bandeiras na primeira vez.
+
 ## Compilar você mesmo (opcional)
 
 1. Instale o core **esp32 3.x** e as bibliotecas **TFT_eSPI** e **ArduinoJson 7**.

@@ -10,6 +10,7 @@
  * Bibliotecas: TFT_eSPI (com o User_Setup da CYD), ArduinoJson 7.
  */
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <WebServer.h>
 #include <DNSServer.h>
@@ -46,7 +47,7 @@ WebServer server(80);
 DNSServer dns;
 
 String cfgSsid, cfgPass, cfgHost, cfgTz;
-bool haveData = false, active = false, wifiOk = false;
+bool haveData = false, active = false, wifiOk = false, useHttps = false;
 unsigned long lastPoll = 0, lastOk = 0, bootDown = 0;
 int fails = 0;
 String sig = "", hdrClock = "";
@@ -132,7 +133,7 @@ void handleRoot() {
     "<label>Rede WiFi da casa</label><input name=ssid list=nets value=\"" + esc(cfgSsid) + "\" required><datalist id=nets>" + opts + "</datalist>"
     "<label>Senha do WiFi</label><input name=pass type=password placeholder='" + String(cfgPass.length() ? "(manter a atual)" : "") + "'>"
     "<label>Endereco do Pi-Star</label><input name=host value=\"" + esc(cfgHost) + "\" placeholder='192.168.0.100' required>"
-    "<small>Digite o <b>IP</b> do Pi-Star (recomendado; o install.sh mostra no final) ou o nome, ex.: pi-star.local.</small>"
+    "<small>Digite o <b>IP</b> do Pi-Star (ex.: 192.168.0.100), o nome (pi-star.local), ou um <b>dominio externo</b> (ex.: pistar.exemplo.com.br para acesso via internet).</small>"
     "<label>Fuso horario</label><select name=tz>" + tz + "</select>"
     "<button>Salvar e reiniciar</button></form></body></html>";
   server.send(200, "text/html", h);
@@ -142,7 +143,8 @@ void handleSave() {
   String s = server.arg("ssid"), p = server.arg("pass"), h = server.arg("host"), z = server.arg("tz");
   s.trim(); h.trim();
   if (!s.length() || !h.length()) { server.send(400, "text/plain", "Rede e endereco sao obrigatorios"); return; }
-  if (h.startsWith("http://")) h = h.substring(7);
+  if (h.startsWith("https://")) h = h.substring(8);
+  else if (h.startsWith("http://")) h = h.substring(7);
   while (h.endsWith("/")) h.remove(h.length() - 1);
   cfgSsid = s; if (p.length()) cfgPass = p; cfgHost = h; if (z.length()) cfgTz = z;
   saveCfg();
@@ -184,9 +186,18 @@ void portal(const char* reason) {
 }
 
 // =====================================================================
-//  PI-STAR: endereço (IP ou nome .local) e leitura
+//  PI-STAR: endereço (IP, nome .local, ou domínio externo) e leitura
 // =====================================================================
+WiFiClientSecure secureClient;
+
 String baseUrl() {
+  // Domínio externo (HTTPS): contém ponto mas não é .local
+  if (cfgHost.indexOf('.') >= 0 && !cfgHost.endsWith(".local")) {
+    useHttps = true;
+    return "https://" + cfgHost;
+  }
+  useHttps = false;
+  // Nome mDNS (.local): resolve via MDNS
   if (cfgHost.endsWith(".local")) {
     if (!hostResolved) {
       IPAddress ip = MDNS.queryHost(cfgHost.substring(0, cfgHost.length() - 6), 2000);
@@ -195,6 +206,7 @@ String baseUrl() {
     }
     return "http://" + hostIP.toString();
   }
+  // IP direto
   return "http://" + cfgHost;
 }
 
@@ -209,13 +221,30 @@ uint16_t* getFlag(const char* cc) {
   if (!cc || strlen(cc) != 2) return nullptr;
   for (int i = 0; i < FLAG_CACHE; i++) if (!strcmp(flagCC[i], cc)) return flagBuf[i];
   String base = baseUrl(); if (!base.length() || WiFi.status() != WL_CONNECTED) return nullptr;
-  HTTPClient http; http.setConnectTimeout(2000); http.setTimeout(3000);
-  http.begin(base + "/cyd/flags/" + cc + ".565");
+  HTTPClient http;
+  http.setConnectTimeout(useHttps ? 5000 : 2000);
+  http.setTimeout(useHttps ? 8000 : 3000);
+  String url = base + "/cyd/flags/" + cc + ".565";
+  if (useHttps) http.begin(secureClient, url);
+  else http.begin(url);
   uint16_t* out = nullptr;
-  if (http.GET() == 200 && http.getSize() == FLAG_W * FLAG_H * 2) {
+  int code = http.GET();
+  int size = http.getSize();
+  if (code == 200 && size == FLAG_W * FLAG_H * 2) {
     int slot = flagNext; flagNext = (flagNext + 1) % FLAG_CACHE;
-    size_t got = http.getStreamPtr()->readBytes((uint8_t*)flagBuf[slot], FLAG_W * FLAG_H * 2);
-    if (got == FLAG_W * FLAG_H * 2) { strncpy(flagCC[slot], cc, 2); flagCC[slot][2] = 0; out = flagBuf[slot]; }
+    uint8_t* buf = (uint8_t*)flagBuf[slot];
+    size_t total = 0, need = FLAG_W * FLAG_H * 2;
+    WiFiClient* stream = http.getStreamPtr();
+    unsigned long t0 = millis();
+    while (total < need && millis() - t0 < 10000) {
+      if (stream->available()) {
+        size_t got = stream->readBytes(buf + total, need - total);
+        total += got;
+      } else {
+        delay(10);
+      }
+    }
+    if (total == need) { strncpy(flagCC[slot], cc, 2); flagCC[slot][2] = 0; out = flagBuf[slot]; }
     else flagCC[slot][0] = 0;
   }
   http.end();
@@ -228,8 +257,11 @@ bool fetch() {
   String base = baseUrl();
   bool ok = false;
   if (base.length()) {
-    HTTPClient http; http.setConnectTimeout(2000); http.setTimeout(2500);
-    http.begin(base + "/cyd/status.json");
+    HTTPClient http;
+    http.setConnectTimeout(useHttps ? 5000 : 2000);
+    http.setTimeout(useHttps ? 6000 : 2500);
+    if (useHttps) http.begin(secureClient, base + "/cyd/status.json");
+    else http.begin(base + "/cyd/status.json");
     if (http.GET() == 200 && !deserializeJson(doc, http.getString()) && (doc["ok"] | false)) {
       haveData = true; active = doc["active"] | false; ok = true;
     }
@@ -362,6 +394,7 @@ void setup() {
   wifiOk = true;
   Serial.println(WiFi.localIP());
   MDNS.begin("pistar-cyd");
+  secureClient.setInsecure();  // aceita qualquer certificado (túneis, self-signed, etc)
   configTzTime(cfgTz.c_str(), "pool.ntp.org", "time.google.com");
 
   tft.fillScreen(BG);
