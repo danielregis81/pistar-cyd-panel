@@ -5,6 +5,21 @@
 A **"who is talking now"** panel for Pi-Star on a **2.8" CYD** (ESP32-2432S028R,
 the "Cheap Yellow Display").
 
+## Why I built this
+
+My DMR hotspot (MMDVM) has a tiny 0.96" OLED that only shows the callsign and talkgroup —
+not much context when you're just listening. I wanted a bigger display showing the **flag,
+name, country, QSO timer** and more, without modifying the hotspot itself.
+
+A CYD costs around $15 and sits next to the radio, showing everything I want. This project
+was my first adventure building something with an ESP32, made possible with AI assistance.
+
+It also inspired the [pp5rd-status-app](https://github.com/danielregis81/pp5rd-status-app),
+an Android app that turns an old phone into a full home server dashboard — including a
+Pi-Star screen that reads from this same panel's data.
+
+## What it shows
+
 It shows the station currently transmitting on your DMR hotspot: **country flag, callsign,
 name, country, talkgroup, timeslot, source (local RF or network), QSO timer, BER and loss**,
 plus the last heard stations and the number of stations and countries heard today.
